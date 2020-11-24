@@ -2,6 +2,8 @@
 
 This package provides `Deque`, a random-access collection similar to `Array` but backed by a growable ring buffer and offering efficient insertion and removal at the front and back.
 
+See `Guide.playground` for more information on usage.
+
 ## Adding Deque as a dependency
 
 To use `Deque` in a SwiftPM project, add the following line to the dependencies in your `Package.swift` file:
