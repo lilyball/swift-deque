@@ -4,7 +4,7 @@
 //  Copyright © 2020 Lily Ballard.
 //  Licensed under Apache License v2.0 with Runtime Library Exception
 //
-//  See https://github.com/lilyball/Deque.swift/blob/main/LICENSE.txt for license information.
+//  See https://github.com/lilyball/swift-deque/blob/main/LICENSE.txt for license information.
 //
 
 // See the doc comment on _DequeHeader for layout details.
