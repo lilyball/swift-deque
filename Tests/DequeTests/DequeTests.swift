@@ -1072,6 +1072,29 @@ final class DequeTests: XCTestCase {
         #endif
     }
     
+    func testDescription() {
+        XCTAssertEqual("\(Deque<IntClass>())", "[]")
+        XCTAssertEqual("\(Deque<IntClass>([1]))", "[1]")
+        XCTAssertEqual("\(Deque<IntClass>([1,2]))", "[1, 2]")
+        XCTAssertEqual("\(Deque(["test"]))", "[\"test\"]")
+    }
+    
+    func testDebugDescription() {
+        // Our debugDescription prints as "Deque" instead of "Deque.Deque" because the latter seems
+        // redundant.
+        XCTAssertEqual(String(reflecting: Deque<IntClass>()), "Deque([])")
+        XCTAssertEqual(String(reflecting: Deque<IntClass>([1])), "Deque([1])")
+        XCTAssertEqual(String(reflecting: Deque<IntClass>([1,2])), "Deque([1, 2])")
+        XCTAssertEqual(String(reflecting: Deque(["test"])), "Deque([\"test\"])")
+    }
+    
+    func testMirror() {
+        let mirror = Mirror(reflecting: Deque([1,2,3]))
+        XCTAssertEqual(mirror.children.map({ $0.label }), [nil, nil, nil], "children labels")
+        XCTAssertEqual(mirror.children.map({ $0.value as? Int }), [1,2,3], "children values")
+        assertElementsEqual(mirror.children, [(label: String?.none, value: 1), (nil, 2), (nil, 3)], by: { ($0.label, $0.value as? Int) == ($1.label, $1.value) })
+    }
+    
     static var allTests = [
         ("testEmptyBufferStorage", testEmptyBufferStorage),
         ("testInitWithSequence", testInitWithSequence),
@@ -1095,6 +1118,9 @@ final class DequeTests: XCTestCase {
         ("testInitUnsafeInitializedCapacity", testInitUnsafeInitializedCapacity),
         ("testMutationViaIndicesType", testMutationViaIndicesType),
         ("testCodable", testCodable),
+        ("testDescription", testDescription),
+        ("testDebugDescription", testDebugDescription),
+        ("testMirror", testMirror),
     ]
 }
 
@@ -1133,10 +1159,11 @@ private func with<T>(_ value: T, _ block: (inout T) throws -> Void) rethrows -> 
 // We're going to ignore that and just do this ourselves.
 private func assertElementsEqual<C1: Collection, C2: Collection>(
     _ c1: C1, _ c2: C2,
+    by areEquivalent: (C1.Element, C2.Element) throws -> Bool,
     _ message: @autoclosure () -> String = "",
     file: StaticString = #filePath,
     line: UInt = #line
-) where C1.Element == C2.Element, C1.Element: Equatable {
+) {
     func colDesc<C: Collection>(_ col: C) -> String {
         // We can't assume all collections have an appropriate description
         return "[\(col.lazy.map({ "\($0)" }).joined(separator: ","))]"
@@ -1145,8 +1172,17 @@ private func assertElementsEqual<C1: Collection, C2: Collection>(
         let str = message()
         return str.isEmpty ? str : " - \(str)"
     }
-    XCTAssert(c1.elementsEqual(c2), "\(colDesc(c1)) is not equal to \(colDesc(c2))\(msg())",
+    XCTAssert(try c1.elementsEqual(c2, by: areEquivalent), "\(colDesc(c1)) is not equal to \(colDesc(c2))\(msg())",
               file: file, line: line)
+}
+
+private func assertElementsEqual<C1: Collection, C2: Collection>(
+    _ c1: C1, _ c2: C2,
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath,
+    line: UInt = #line
+) where C1.Element == C2.Element, C1.Element: Equatable {
+    assertElementsEqual(c1, c2, by: ==, message(), file: file, line: line)
 }
 
 /// A class type that acts like an integer.
