@@ -659,6 +659,7 @@ final class DequeTests: XCTestCase {
             for i: IntClass in 0..<10 { deque.append(i) }
         }
         XCTAssert(deque.hasContiguousStorage, "buffer has contiguous storage")
+        assertElementsEqual(deque, 0..<10)
         
         deque = []
         deque.reserveCapacity(10)
@@ -666,6 +667,7 @@ final class DequeTests: XCTestCase {
             for i: IntClass in 0..<10 { deque.prepend(i) }
         }
         XCTAssert(deque.hasContiguousStorage, "buffer has contiguous storage")
+        assertElementsEqual(deque, (0..<10).reversed())
         
         deque = []
         deque.reserveCapacity(10)
@@ -674,12 +676,22 @@ final class DequeTests: XCTestCase {
             deque.append(contentsOf: 5..<10)
         }
         XCTAssert(deque.hasContiguousStorage, "buffer has contiguous storage")
+        assertElementsEqual(deque, 0..<10)
         
         // Note: we can't make this guarantee for prepend(contentsOf:) because that complicates
         // things too much. If we wanted to specialize for BidirectionalCollection then we could do
         // it easier, but we aren't doing that for now. So for the time being prepend(contentsOf:)
         // on an empty buffer acts like append(contentsOf:) instead and aligns the new elements to
-        // the beginning of storage.
+        // the beginning of storage, so multiple calls to prepend(contentsOf:) will result in split
+        // storage unless it has to reallocate. We can stil validate that a single call remains
+        // contiguous though.
+        deque = []
+        deque.reserveCapacity(10)
+        assertNoReallocation(of: &deque) { (deque) in
+            deque.prepend(contentsOf: 0..<5)
+        }
+        XCTAssert(deque.hasContiguousStorage, "buffer has contiguous storage")
+        assertElementsEqual(deque, 0..<5)
     }
     
     func testCopyOnWrite() {
