@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Deque",
+    name: "swift-deque",
     products: [
         .library(
             name: "Deque",
