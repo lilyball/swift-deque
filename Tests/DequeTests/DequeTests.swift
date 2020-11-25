@@ -478,24 +478,55 @@ final class DequeTests: XCTestCase {
             // gap is split across the start/end of the buffer.
             var (deque, cap, oldIdent) = makeDeque(gap: 0, minCount: 5)
             for pos in 0..<(cap-1) { // (cap-1) because otherwise our final position is equivalent to pos=0
-                deque.removeAll(keepingCapacity: true)
-                // Place the head span at position `pos`.
-                // Note: We're avoiding the use of append(contentsOf:) here because this is testing append(contentsOf:)
-                // and we don't want any bugs in that method to affect the test setup.
-                for i in 0..<IntClass(pos) { deque.append(i) } // filler to be removed to create the gap
-                deque.append(0) // first element to keep
-                deque.removeFirst(pos) // clear the filler
                 let gapSize = 3
-                for i in 1..<IntClass(cap-gapSize) { deque.append(i) } // remaining elements
-                XCTAssertEqual(deque._storage.header.headSpan.lowerBound, pos, "header span lower bound")
-                XCTAssertEqual(deque.capacity, cap, "capacity - head position \(pos)")
-                XCTAssertEqual(deque.count, cap-gapSize, "count - head position \(pos)")
-                XCTAssertEqual(deque.bufferIdentifier, oldIdent, "buffer storage pointer - head position \(pos)")
+                func resetDeque() {
+                    deque.removeAll(keepingCapacity: true)
+                    // Place the head span at position `pos`.
+                    // Note: We're avoiding the use of append(contentsOf:) here because this is testing append(contentsOf:)
+                    // and we don't want any bugs in that method to affect the test setup.
+                    for i in 0..<IntClass(pos) { deque.append(i) } // filler to be removed to create the gap
+                    deque.append(0) // first element to keep
+                    deque.removeFirst(pos) // clear the filler
+                    for i in 1..<IntClass(cap-gapSize) { deque.append(i) } // remaining elements
+                    XCTAssertEqual(deque._storage.header.headSpan.lowerBound, pos, "header span lower bound")
+                    XCTAssertEqual(deque.capacity, cap, "capacity - head position \(pos)")
+                    XCTAssertEqual(deque.count, cap-gapSize, "count - head position \(pos)")
+                    XCTAssertEqual(deque.bufferIdentifier, oldIdent, "buffer storage pointer - head position \(pos)")
+                }
                 
-                deque.append(contentsOf: 10..<(10+gapSize)) // fill the gap
-                XCTAssertEqual(deque.capacity, cap, "capacity - head position \(pos)")
-                XCTAssertEqual(deque.count, cap, "count - head position \(pos)")
-                XCTAssertEqual(deque.bufferIdentifier, oldIdent, "buffer storage pointer - head position \(pos)")
+                XCTContext.runActivity(named: "Using head position \(pos)") { (_) in
+                    func fill(leavingGapOf remainder: Int) {
+                        XCTContext.runActivity(named: "Filling with known-sized collection") { (_) in
+                            resetDeque()
+                            deque.append(contentsOf: 10..<(10+gapSize-remainder)) // fill the gap
+                            XCTAssertEqual(deque.capacity, cap, "capacity - head position \(pos)")
+                            XCTAssertEqual(deque.count, cap-remainder, "count - head position \(pos)")
+                            XCTAssertEqual(deque.bufferIdentifier, oldIdent, "buffer storage pointer - head position \(pos)")
+                        }
+                        
+                        XCTContext.runActivity(named: "Filling with unknown-sized collection") { (_) in
+                            resetDeque()
+                            deque.append(contentsOf: UnknownLengthSequence(10..<(10+gapSize-remainder)))
+                            XCTAssertEqual(deque.capacity, cap, "capacity - head position \(pos)")
+                            XCTAssertEqual(deque.count, cap-remainder, "count - head position \(pos)")
+                            XCTAssertEqual(deque.bufferIdentifier, oldIdent, "buffer storage pointer - head position \(pos)")
+                        }
+                        
+                        XCTContext.runActivity(named: "Filling with partially-sized collection") { (_) in
+                            resetDeque()
+                            deque.append(contentsOf: UnknownLengthSequence(10..<(10+gapSize-remainder), underestimatedCount: 1))
+                            XCTAssertEqual(deque.capacity, cap, "capacity - head position \(pos)")
+                            XCTAssertEqual(deque.count, cap-remainder, "count - head position \(pos)")
+                            XCTAssertEqual(deque.bufferIdentifier, oldIdent, "buffer storage pointer - head position \(pos)")
+                        }
+                    }
+                    XCTContext.runActivity(named: "Filling entire gap") { (_) in
+                        fill(leavingGapOf: 0)
+                    }
+                    XCTContext.runActivity(named: "Filling most of the gap") { (_) in
+                        fill(leavingGapOf: 1)
+                    }
+                }
             }
         }
     }
