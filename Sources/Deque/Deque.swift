@@ -930,24 +930,15 @@ public struct Deque<Element>: RandomAccessCollection, MutableCollection {
                     // Update header
                     newHeaderPtr.pointee.headSpan = oldHeaderPtr.pointee.headSpan
                     newHeaderPtr.pointee.tailCount = oldHeaderPtr.pointee.tailCount
-                    // Move/copy the elements
+                    // Copy the elements.
+                    // We don't need to support moving here, we shouldn't be called if we're unique
+                    // and already have the right capacity.
+                    // Copy tail
+                    newElemPtr.initialize(from: oldElemPtr, count: oldHeaderPtr.pointee.tailCount)
+                    // Copy head
                     let headOffset = oldHeaderPtr.pointee.headSpan.lowerBound
-                    if isUnique {
-                        // Move tail
-                        newElemPtr.moveInitialize(from: oldElemPtr, count: oldHeaderPtr.pointee.tailCount)
-                        // Move head
-                        (newElemPtr + headOffset).moveInitialize(from: oldElemPtr + headOffset,
-                                                                 count: oldHeaderPtr.pointee.headSpan.count)
-                        // Clean up old header
-                        oldHeaderPtr.pointee.headSpan = 0..<0
-                        oldHeaderPtr.pointee.tailCount = 0
-                    } else {
-                        // Copy tail
-                        newElemPtr.initialize(from: oldElemPtr, count: oldHeaderPtr.pointee.tailCount)
-                        // Copy head
-                        (newElemPtr + headOffset).initialize(from: oldElemPtr + headOffset,
-                                                             count: oldHeaderPtr.pointee.headSpan.count)
-                    }
+                    (newElemPtr + headOffset).initialize(from: oldElemPtr + headOffset,
+                                                         count: oldHeaderPtr.pointee.headSpan.count)
                 }
             }
             _storage = newStorage
