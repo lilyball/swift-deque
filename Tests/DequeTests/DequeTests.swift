@@ -1050,6 +1050,125 @@ final class DequeTests: XCTestCase {
         assertElementsEqual(deque, [1,2,12,23,24], "buffer contents")
     }
     
+    func testPopFirstLast() {
+        var deque: Deque<IntClass> = []
+        
+        // empty
+        XCTAssertNil(deque.popFirst())
+        XCTAssertNil(deque.popLast())
+        
+        // head-only storage
+        deque.reserveCapacity(10)
+        for i: IntClass in 0..<3 { deque.append(i) }
+        XCTAssertEqual(deque.popFirst(), 0)
+        XCTAssertEqual(deque.popLast(), 2)
+        XCTAssertEqual(deque.popFirst(), 1)
+        XCTAssert(deque.isEmpty)
+        
+        // split storage
+        deque = []
+        deque.reserveCapacity(10)
+        for i: IntClass in 2..<4 { deque.append(i) } // tail
+        for i: IntClass in (0..<2).reversed() { deque.prepend(i) } // head
+        XCTAssertEqual(deque._storage.header.tailCount, 2, "storage tailCount")
+        XCTAssertEqual(deque.popFirst(), 0)
+        XCTAssertEqual(deque.popLast(), 3)
+        XCTAssertEqual(deque.popFirst(), 1)
+        // We should have reverted to head-only storage now
+        XCTAssertEqual(deque._storage.header.tailCount, 0, "storage tailCount")
+        XCTAssertEqual(deque._storage.header.headSpan, 0..<1, "storage headSpan")
+        XCTAssertEqual(deque.popFirst(), 2)
+        XCTAssertEqual(deque._storage.header.headSpan, 0..<0, "storage headSpan")
+    }
+    
+    func testRemoveFirstN() {
+        var deque: Deque<IntClass> = []
+        
+        // empty
+        deque.removeFirst(0) // should not crash
+        XCTAssert(deque.isEmpty)
+        
+        // head-only storage
+        deque.reserveCapacity(10)
+        for i: IntClass in 0..<5 { deque.append(i) }
+        assertElementsEqual(deque, 0..<5, "test setup")
+        deque.removeFirst(0)
+        assertElementsEqual(deque, 0..<5, "nothing removed")
+        deque.removeFirst(3)
+        assertElementsEqual(deque, 3..<5, "first 3 removed")
+        deque.removeFirst(2)
+        assertElementsEqual(deque, [], "remainder removed")
+        
+        // split storage
+        deque = []
+        deque.reserveCapacity(10)
+        for i: IntClass in 4..<8 { deque.append(i) } // tail
+        for i: IntClass in (0..<4).reversed() { deque.prepend(i) } // head
+        XCTAssertEqual(deque._storage.header.tailCount, 4, "storage tailCount")
+        assertElementsEqual(deque, 0..<8, "test setup")
+        deque.removeFirst(2)
+        assertElementsEqual(deque, 2..<8, "first 2 removed")
+        XCTAssertEqual(deque._storage.header.tailCount, 4, "storage tailCount") // tail should be unaffected
+        deque.removeFirst(2) // remove the rest of the head
+        assertElementsEqual(deque, 4..<8, "rest of head removed")
+        XCTAssertEqual(deque._storage.header.tailCount, 0, "storage tailCount") // tail should have turned into head
+        for i: IntClass in (2..<4).reversed() { deque.prepend(i) } // restore the head/tail split
+        XCTAssertEqual(deque._storage.header.tailCount, 4, "storage tailCount")
+        deque.removeFirst(4) // remove head and part of tail
+        assertElementsEqual(deque, 6..<8)
+        XCTAssertEqual(deque._storage.header.tailCount, 0, "storage tailCount") // tail is once again the head
+        for i: IntClass in (0..<6).reversed() { deque.prepend(i) } // restore the head/tail split
+        XCTAssertEqual(deque._storage.header.tailCount, 4, "storage tailCount")
+        assertElementsEqual(deque, 0..<8)
+        deque.removeFirst(8) // clear everything
+        assertElementsEqual(deque, [])
+        XCTAssertEqual(deque._storage.header.headSpan, 0..<0, "storage headSpan")
+    }
+    
+    func testRemoveLastN() {
+        var deque: Deque<IntClass> = []
+        
+        // empty
+        deque.removeLast(0) // should not crash
+        XCTAssert(deque.isEmpty)
+        
+        // head-only storage
+        deque.reserveCapacity(10)
+        for i: IntClass in 0..<5 { deque.append(i) }
+        assertElementsEqual(deque, 0..<5, "test setup")
+        deque.removeLast(0)
+        assertElementsEqual(deque, 0..<5, "nothing removed")
+        deque.removeLast(3)
+        assertElementsEqual(deque, 0..<2, "last 3 removed")
+        deque.removeLast(2)
+        assertElementsEqual(deque, [], "remainder removed")
+        
+        // split storage
+        deque = []
+        deque.reserveCapacity(10)
+        for i: IntClass in 4..<8 { deque.append(i) } // tail
+        for i: IntClass in (0..<4).reversed() { deque.prepend(i) } // head
+        XCTAssertEqual(deque._storage.header.tailCount, 4, "storage tailCount")
+        assertElementsEqual(deque, 0..<8, "test setup")
+        deque.removeLast(2)
+        assertElementsEqual(deque, 0..<6, "last 2 removed")
+        XCTAssertEqual(deque._storage.header.tailCount, 2, "storage tailCount")
+        deque.removeLast(2) // remove the rest of the tail
+        assertElementsEqual(deque, 0..<4, "rest of tail removed")
+        XCTAssertEqual(deque._storage.header.tailCount, 0, "storage tailCount")
+        for i: IntClass in 4..<6 { deque.append(i) } // restore the head/tail split
+        XCTAssertEqual(deque._storage.header.tailCount, 2, "storage tailCount")
+        deque.removeLast(4) // remove tail and part of head
+        assertElementsEqual(deque, 0..<2)
+        XCTAssertEqual(deque._storage.header.tailCount, 0, "storage tailCount")
+        for i: IntClass in 2..<8 { deque.append(i) } // restore the head/tail split
+        XCTAssertEqual(deque._storage.header.tailCount, 4, "storage tailCount")
+        assertElementsEqual(deque, 0..<8)
+        deque.removeLast(8) // clear everything
+        assertElementsEqual(deque, [])
+        XCTAssertEqual(deque._storage.header.headSpan, 0..<0, "storage headSpan")
+    }
+    
     func testCodable() throws {
         #if canImport(Foundation)
         // Deque and Array should have the same encoded representation
