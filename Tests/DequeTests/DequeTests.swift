@@ -83,6 +83,28 @@ final class DequeTests: XCTestCase {
         buf.reserveCapacity(5)
         buf.prepend(0)
         XCTAssertEqual(Array(buf), [0,1,2,3])
+        
+        // also an empty one
+        buf = []
+        XCTAssertEqual(Array(buf), [])
+        // and an empty one with capacity
+        buf.reserveCapacity(10)
+        XCTAssertEqual(Array(buf), [])
+        
+        // Normally, Array(buf) will invoke our _copyContents. It doesn't do this if we're empty
+        // though, but we'd like to validate that _copyContents works when empty. We'll do that by
+        // using the other public API for invoking it, which is
+        // UnsafeMutableBufferPointer.initialize(from:).
+        let heapBuffer = UnsafeMutableBufferPointer<IntClass>.allocate(capacity: 5)
+        defer { heapBuffer.deallocate() }
+        buf = [] // test using shared empty storage
+        var (iter, idx) = heapBuffer.initialize(from: buf)
+        XCTAssertNil(iter.next(), "iter.next()")
+        XCTAssertEqual(idx, heapBuffer.startIndex)
+        buf.reserveCapacity(10) // test again with some capacity
+        (iter, idx) = heapBuffer.initialize(from: buf)
+        XCTAssertNil(iter.next(), "iter.next()")
+        XCTAssertEqual(idx, heapBuffer.startIndex)
     }
     
     func testReserveCapacity() {
