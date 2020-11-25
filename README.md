@@ -9,13 +9,13 @@ See `Guide.playground` for more information on usage.
 To use `Deque` in a SwiftPM project, add the following line to the dependencies in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/lilyball/swift-deque", from: "0.0.1"),
+.package(url: "https://github.com/lilyball/swift-deque", from: "0.0.2"),
 ```
 
 Because `Deque` is still pre-1.0, source-stability is only guaranteed within minor versions. If you don't want potentially source-breaking package updates, use this dependency specification instead:
 
 ```swift
-.package(url: "https://github.com/lilyball/swift-deque", .upToNextMinor(from: "0.0.1")),
+.package(url: "https://github.com/lilyball/swift-deque", .upToNextMinor(from: "0.0.2")),
 ```
 
 Finally, include `"Deque"` as a dependency for your target:
@@ -24,7 +24,7 @@ Finally, include `"Deque"` as a dependency for your target:
 let package = Package(
     // name, etc…
     dependencies: [
-        .package(url: "https://github.com/lilyball/swift-deque", .upToNextMinor(from: "0.0.1")),
+        .package(url: "https://github.com/lilyball/swift-deque", .upToNextMinor(from: "0.0.2")),
     ],
     targets: [
         .target(name: "<target name>", dependencies: [
