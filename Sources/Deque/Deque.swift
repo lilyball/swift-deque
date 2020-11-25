@@ -189,10 +189,8 @@ public struct Deque<Element>: RandomAccessCollection, MutableCollection {
         return _storage.header.index(before: i)
     }
     
-    @inlinable
-    public func formIndex(_ i: inout Index, offsetBy distance: Int) {
-        _storage.header.formIndex(&i, offsetBy: distance)
-    }
+    // Note: formIndex(_:offsetBy:) is not actually declared in any collection protocol, it's
+    // instead provided as an extension using index(_:offsetBy:), so we can skip it.
     
     @inlinable
     public func index(_ i: Index, offsetBy distance: Int) -> Index {
@@ -855,11 +853,6 @@ public struct Deque<Element>: RandomAccessCollection, MutableCollection {
         }
         
         @inlinable
-        public func formIndex(_ i: inout Index, offsetBy distance: Int) {
-            _header.formIndex(&i, offsetBy: distance)
-        }
-        
-        @inlinable
         public func index(_ i: Index, offsetBy distance: Int) -> Index {
             return _header.index(i, offsetBy: distance)
         }
@@ -1267,36 +1260,31 @@ internal struct _DequeHeader {
     }
     
     @inlinable
-    func formIndex(_ i: inout Index, offsetBy distance: Int) {
+    func index(_ i: Index, offsetBy distance: Int) -> Index {
+        var rawValue = i._rawValue
         if distance > 0 {
-            let wasHead = i._rawValue < Index._tailFlag
-            i._rawValue += UInt(bitPattern: distance)
-            if wasHead && i._rawValue >= UInt(bitPattern: capacity) && tailCount > 0 {
+            let wasHead = rawValue < Index._tailFlag
+            rawValue += UInt(bitPattern: distance)
+            if wasHead && rawValue >= UInt(bitPattern: capacity) && tailCount > 0 {
                 // Wrap around
-                i._rawValue = (i._rawValue &- UInt(bitPattern: capacity)) | Index._tailFlag
+                rawValue = (rawValue &- UInt(bitPattern: capacity)) | Index._tailFlag
             }
         } else if distance < 0 {
-            if i._rawValue >= Index._tailFlag {
-                i._rawValue &+= UInt(bitPattern: distance) // equivalent to signed addition
-                if i._rawValue < Index._tailFlag {
+            if rawValue >= Index._tailFlag {
+                rawValue &+= UInt(bitPattern: distance) // equivalent to signed addition
+                if rawValue < Index._tailFlag {
                     // We subtracted past the beginning of the tail
-                    let result = UInt(bitPattern: capacity).subtractingReportingOverflow(Index._tailFlag &- i._rawValue)
+                    let result = UInt(bitPattern: capacity).subtractingReportingOverflow(Index._tailFlag &- rawValue)
                     precondition(!result.overflow, "Attempted to create invalid index") // Report better error on overflow
-                    i._rawValue = result.partialValue
+                    rawValue = result.partialValue
                 }
             } else {
-                let newValue = i._rawValue &+ UInt(bitPattern: distance) // equivalent to signed addition
-                precondition(newValue < i._rawValue, "Attempted to create invalid index") // Report error on overflow
-                i._rawValue = newValue
+                let newValue = rawValue &+ UInt(bitPattern: distance) // equivalent to signed addition
+                precondition(newValue < rawValue, "Attempted to create invalid index") // Report error on overflow
+                rawValue = newValue
             }
         }
-    }
-    
-    @inlinable
-    func index(_ i: Index, offsetBy distance: Int) -> Index {
-        var i = i
-        formIndex(&i, offsetBy: distance)
-        return i
+        return Index(_rawValue: rawValue)
     }
     
     @inlinable

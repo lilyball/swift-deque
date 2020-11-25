@@ -236,13 +236,33 @@ final class DequeTests: XCTestCase {
             XCTAssertEqual(buf.count, buf.capacity, "buffer count should equal capacity")
         })
         
-        // call this function multiple times so we know which input produced which errors
-        validateIndexTraversals(emptyDeque)
-        validateIndexTraversals(oneElemDeque)
-        validateIndexTraversals(dequeWithCapacity)
-        validateIndexTraversals(dequeWithLeadingCapacity)
-        validateIndexTraversals(dequeWithTail)
-        validateIndexTraversals(dequeWithTailNoGap)
+        func runTests(_ deque: Deque<IntClass>, line: UInt = #line) {
+            func validate<C: RandomAccessCollection>(_ collection: C, line: UInt) {
+                validateIndexTraversals(collection, line: line)
+                // validateIndexTraversals doesn't test all index methods. In particular, for every
+                // nonmutating/mutating pair (such as index(before:) and formIndex(before:)) it only
+                // picks one of them. Add a few tests of our own to ensure coverage.
+                if !collection.isEmpty {
+                    var idx = collection.startIndex
+                    collection.formIndex(after: &idx)
+                    XCTAssertEqual(idx, collection.index(after: collection.startIndex), "formIndex(after:) vs index(after:)", line: line)
+                    idx = collection.endIndex
+                    collection.formIndex(before: &idx)
+                    XCTAssertEqual(idx, collection.index(before: collection.endIndex), "formIndex(before:) vs index(before:)", line: line)
+                    // formIndex(_:offsetBy:) is not actually part of the protocol (it's an
+                    // extension) so we can skip it.
+                }
+            }
+            validate(deque, line: line)
+            validate(deque.indices, line: line)
+        }
+        
+        runTests(emptyDeque)
+        runTests(oneElemDeque)
+        runTests(dequeWithCapacity)
+        runTests(dequeWithLeadingCapacity)
+        runTests(dequeWithTail)
+        runTests(dequeWithTailNoGap)
     }
     
     func testAppendReallocation() {
